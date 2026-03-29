@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8" />
+  <title>ESG-ledelsesrapport</title>
+  <style>
+    body { font-family: Arial, sans-serif; color:#1b1f24; margin: 24px; line-height:1.5; }
+    h1 { color:#083344; }
+    h2 { border-bottom:1px solid #ddd; padding-bottom:4px; margin-top:28px; }
+    .meta { color:#475569; margin-bottom: 24px; }
+    .indicator-table { width:100%; border-collapse: collapse; margin-top:16px; }
+    .indicator-table th, .indicator-table td { border:1px solid #ddd; padding:8px; font-size: 14px; }
+    .light-green { color:#166534; font-weight:600; }
+    .light-yellow { color:#854d0e; font-weight:600; }
+    .light-red { color:#991b1b; font-weight:600; }
+    .light-grey { color:#475569; font-weight:600; }
+  </style>
+</head>
+<body>
+  <h1>ESG-ledelsesrapport</h1>
+  <div class="meta">
+    <div><strong>Organisation:</strong> {{ organization.name }}</div>
+    <div><strong>Kommune:</strong> {{ organization.municipality or 'Ukendt' }}</div>
+    <div><strong>Rapportår:</strong> {{ report_year }}</div>
+  </div>
+
+  {% for section in sections %}
+    <h2>{{ section.title }}</h2>
+    <p style="white-space: pre-line;">{{ section.body }}</p>
+  {% endfor %}
+
+  <h2>Indikatoroversigt</h2>
+  <table class="indicator-table">
+    <thead>
+      <tr>
+        <th>ID</th><th>Dimension</th><th>Indikator</th><th>Niveau</th><th>Udvikling %</th><th>Trafiklys</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in indicators %}
+      <tr>
+        <td>{{ i.id }}</td>
+        <td>{{ i.dimension }}</td>
+        <td>{{ i.name }}</td>
+        <td>{{ i.current if i.current is not none else 'mangler' }} {{ i.unit }}</td>
+        <td>{{ ('%.1f' % i.delta_pct) if i.delta_pct is not none else 'n/a' }}</td>
+        <td class="light-{{ i.trafficlight }}">{{ i.trafficlight }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

@@ -1,0 +1,31 @@
+[
+  {"id":"E1","dimension":"E","name":"Klimaaftryk","method":"benchmark_relativ","operator":"lte","benchmark":1000,"unit":"ton CO2e","source_key":"co2e_total_tons"},
+  {"id":"E2","dimension":"E","name":"Energiforbrug","method":"benchmark_relativ","operator":"lte","benchmark":105,"unit":"kWh/m2","source_key":"energy_kwh_m2"},
+  {"id":"E3","dimension":"E","name":"Energimærkning","method":"absolut_taerskel","thresholds":{"green":70,"yellow":55},"unit":"score","source_key":"energy_label_score"},
+  {"id":"E4","dimension":"E","name":"Sårbarhed for klimaændringer","method":"binaer_omvendt","unit":"bool","source_key":"climate_risk_flag"},
+  {"id":"E5","dimension":"E","name":"Biodiversitet","method":"ingen_benchmark","unit":"index","source_key":"biodiversity_index"},
+  {"id":"E6","dimension":"E","name":"Affaldssortering","method":"benchmark_relativ","operator":"gte","benchmark":65,"unit":"%","source_key":"waste_sorting_pct"},
+  {"id":"E7","dimension":"E","name":"Vandforbrug","method":"benchmark_relativ","operator":"lte","benchmark":55,"unit":"l/m2","source_key":"water_l_m2"},
+  {"id":"E8","dimension":"E","name":"Vedvarende energiandel","method":"benchmark_relativ","operator":"gte","benchmark":35,"unit":"%","source_key":"renewable_share_pct"},
+
+  {"id":"S1","dimension":"S","name":"Medarbejdersammensætning","method":"ingen_benchmark","unit":"index","source_key":"employee_diversity_index"},
+  {"id":"S2","dimension":"S","name":"Medarbejdertrivsel","method":"absolut_taerskel","thresholds":{"green":75,"yellow":60},"unit":"score","source_key":"employee_wellbeing_score"},
+  {"id":"S3","dimension":"S","name":"Almenboligers betalbarhed","method":"benchmark_relativ","operator":"lte","benchmark":25,"unit":"%","source_key":"rent_burden_share"},
+  {"id":"S4","dimension":"S","name":"Andel almene boliger i området","method":"benchmark_relativ","operator":"gte","benchmark":20,"unit":"%","source_key":"social_housing_area_share"},
+  {"id":"S5","dimension":"S","name":"Funktioner i området","method":"ingen_benchmark","unit":"index","source_key":"local_function_index"},
+  {"id":"S6","dimension":"S","name":"Livskvalitet og sundhed","method":"absolut_taerskel","thresholds":{"green":70,"yellow":55},"unit":"score","source_key":"quality_health_score"},
+  {"id":"S7","dimension":"S","name":"Lokalt fællesskab","method":"absolut_taerskel","thresholds":{"green":72,"yellow":58},"unit":"score","source_key":"community_score"},
+
+  {"id":"G1","dimension":"G","name":"Beboerdemokrati","method":"absolut_taerskel","thresholds":{"green":70,"yellow":55},"unit":"score","source_key":"tenant_democracy_score"},
+  {"id":"G2","dimension":"G","name":"Økonomistyring","method":"benchmark_relativ","operator":"lte","benchmark":2.5,"unit":"%","source_key":"vacancy_rate"},
+  {"id":"G3","dimension":"G","name":"Politikker og praksis","method":"binaer","unit":"bool","source_key":"policy_compliance_flag"},
+  {"id":"G4","dimension":"G","name":"Frivillighed","method":"ingen_benchmark","unit":"hours","source_key":"volunteer_hours"},
+  {"id":"G5","dimension":"G","name":"Overholdelse af regulering","method":"binaer","unit":"bool","source_key":"regulation_compliance_flag"},
+  {"id":"G6","dimension":"G","name":"Sociale klausuler","method":"binaer","unit":"bool","source_key":"social_clause_flag"},
+  {"id":"G7","dimension":"G","name":"Revision uden forbehold","method":"binaer","unit":"bool","source_key":"audit_clean_flag"},
+  {"id":"G8","dimension":"G","name":"Likviditetsberedskab","method":"benchmark_relativ","operator":"gte","benchmark":3,"unit":"måneder","source_key":"liquidity_months"},
+  {"id":"G9","dimension":"G","name":"Langsigtet vedligehold","method":"benchmark_relativ","operator":"gte","benchmark":85,"unit":"%","source_key":"planned_maintenance_pct"},
+  {"id":"G10","dimension":"G","name":"Datakvalitet","method":"absolut_taerskel","thresholds":{"green":90,"yellow":75},"unit":"%","source_key":"data_completeness_pct"},
+  {"id":"G11","dimension":"G","name":"Risikoopfølgning","method":"binaer","unit":"bool","source_key":"risk_followup_flag"},
+  {"id":"G12","dimension":"G","name":"Whistleblower-ordning","method":"binaer","unit":"bool","source_key":"whistleblower_flag"}
+]

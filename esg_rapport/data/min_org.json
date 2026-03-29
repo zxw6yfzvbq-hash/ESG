@@ -1,0 +1,40 @@
+{
+  "organization": {
+    "name": "MiniBolig",
+    "municipality": "Odense"
+  },
+  "report_year": 2025,
+  "records": [
+    {
+      "department": "Afdeling 1",
+      "year": 2025,
+      "co2e_total_tons": 990,
+      "energy_kwh_m2": 101,
+      "energy_label_score": 68,
+      "climate_risk_flag": false,
+      "biodiversity_index": 59,
+      "waste_sorting_pct": 66,
+      "water_l_m2": 52,
+      "renewable_share_pct": 33,
+      "employee_diversity_index": 64,
+      "employee_wellbeing_score": 74,
+      "rent_burden_share": 24,
+      "social_housing_area_share": 21,
+      "local_function_index": 65,
+      "quality_health_score": 69,
+      "community_score": 71,
+      "tenant_democracy_score": 70,
+      "vacancy_rate": 2.3,
+      "policy_compliance_flag": true,
+      "volunteer_hours": 120,
+      "regulation_compliance_flag": true,
+      "social_clause_flag": true,
+      "audit_clean_flag": true,
+      "liquidity_months": 3.0,
+      "planned_maintenance_pct": 86,
+      "data_completeness_pct": 90,
+      "risk_followup_flag": true,
+      "whistleblower_flag": true
+    }
+  ]
+}
