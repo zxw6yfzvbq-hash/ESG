@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8" />
+  <title>ESG-ledelsesrapport (PDF)</title>
+  <style>
+    body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 12px; color:#111827; }
+    h1 { font-size: 22px; margin-bottom: 8px; }
+    h2 { font-size: 15px; margin-top: 18px; border-bottom: 1px solid #d1d5db; }
+    p { white-space: pre-line; }
+    .small { color:#4b5563; }
+  </style>
+</head>
+<body>
+  <h1>ESG-ledelsesrapport</h1>
+  <p class="small">Organisation: {{ organization.name }} · Rapportår: {{ report_year }}</p>
+
+  {% for section in sections %}
+    <h2>{{ section.title }}</h2>
+    <p>{{ section.body }}</p>
+  {% endfor %}
+</body>
+</html>
