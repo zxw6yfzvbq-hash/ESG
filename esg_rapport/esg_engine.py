@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional, Any
 import json
+import math
+import operator as _operator
 import re as _re
 from pathlib import Path
 
@@ -22,7 +24,7 @@ class CalculatedIndicator:
     enhed_display: str
     indikator_type: str
     prompt_type: str
-    org_vaerdi: Optional[float]
+    org_vaerdi: float | str | bool | None
     org_aar: Optional[int]
     benchmark_vaerdi: Optional[float]
     benchmark_aar: Optional[int]
@@ -38,6 +40,7 @@ class CalculatedIndicator:
     aar_usikker: bool
     billede_emoji: str
     registry_def: dict = field(default_factory=dict)
+    validation_warnings: list[str] = field(default_factory=list)
     org_vaerdi_fmt: str = ""
     benchmark_vaerdi_fmt: str = ""
     diff_abs_fmt: str = ""
@@ -80,53 +83,33 @@ def _format_diff(diff: Optional[float], diff_type: str, enhed_kode: str) -> str:
 
 
 def _parse_threshold(expr: str) -> tuple:
+    """Parse comparisons without executing expressions or reordering their bounds."""
     expr = expr.strip()
     if expr in ("False", "false"):
         return ("always_false",)
-
-    str_match = _re.match(r"\w+ == '([^']+)'$", expr)
-    if str_match:
-        return ("str_eq", str_match.group(1))
-
-    num = r"-?\d+(?:\.\d+)?"
-    op = r"(?:==|!=|[><]=?)"
-
-    and_match = _re.match(rf"\w+ ({op}) ({num}) and \w+ ({op}) ({num})$", expr)
-    if and_match:
-        op1, v1, op2, v2 = and_match.groups()
-        lo, hi = float(v1), float(v2)
-        lo_inc = op1 in (">=", "==")
-        hi_inc = op2 in ("<=", "==")
-        return ("between", lo, hi, lo_inc, hi_inc)
-
-    simple = _re.match(rf"\w+ ({op}) ({num})$", expr)
-    if simple:
-        operator, val = simple.groups()
-        return (operator, float(val))
-
+    if " and " in expr:
+        return ("and", *(_parse_threshold(part) for part in expr.split(" and ")))
+    string = _re.fullmatch(r"\w+ (==|!=) '([^']+)'", expr)
+    if string:
+        return ("str_compare", string[1], string[2])
+    numeric = _re.fullmatch(r"\w+ (==|!=|[><]=?) (-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)", expr)
+    if numeric:
+        value = float(numeric[2])
+        if math.isfinite(value):
+            return (numeric[1], value)
     raise ValueError(f"Kan ikke parse taerskeludtryk: {expr!r}")
 
 
 def _eval_threshold(parsed: tuple, value: Any) -> bool:
-    kind = parsed[0]
-    if kind == "always_false":
+    if parsed[0] == "always_false":
         return False
-    if kind == "str_eq":
-        return str(value) == parsed[1]
-    if kind == "between":
-        _, lo, hi, lo_inc, hi_inc = parsed
-        lo_ok = (value >= lo) if lo_inc else (value > lo)
-        hi_ok = (value <= hi) if hi_inc else (value < hi)
-        return lo_ok and hi_ok
-    operator, threshold = parsed[0], parsed[1]
-    return {
-        "<": value < threshold,
-        "<=": value <= threshold,
-        ">": value > threshold,
-        ">=": value >= threshold,
-        "==": value == threshold,
-        "!=": value != threshold,
-    }[operator]
+    if parsed[0] == "and":
+        return all(_eval_threshold(part, value) for part in parsed[1:])
+    comparisons = {"<": _operator.lt, "<=": _operator.le, ">": _operator.gt,
+                   ">=": _operator.ge, "==": _operator.eq, "!=": _operator.ne}
+    if parsed[0] == "str_compare":
+        return comparisons[parsed[1]](str(value), parsed[2])
+    return comparisons[parsed[0]](value, parsed[1])
 
 
 def _evaluate_traffic_light(
@@ -142,43 +125,40 @@ def _evaluate_traffic_light(
     if datastatus != "tilgaengelig" or org_vaerdi is None:
         return "graa"
 
-    try:
-        if metode == "ingen_benchmark":
-            return "graa"
-
-        if metode == "benchmark_relativ":
-            if ratio is None:
-                return "graa"
-            for farve in ("groen", "gul", "roed"):
-                if _eval_threshold(_parse_threshold(tl[farve]), ratio):
-                    return farve
-            return "graa"
-
-        if metode == "benchmark_relativ_procentpoint":
-            if benchmark_vaerdi is None:
-                return "graa"
-            diff = float(org_vaerdi) - float(benchmark_vaerdi)
-            for farve in ("groen", "gul", "roed"):
-                if _eval_threshold(_parse_threshold(tl[farve]), diff):
-                    return farve
-            return "graa"
-
-        if metode == "absolut_taerskel":
-            val = float(org_vaerdi)
-            for farve in ("groen", "gul", "roed"):
-                if _eval_threshold(_parse_threshold(tl[farve]), val):
-                    return farve
-            return "graa"
-
-        if metode in ("binaer", "binaer_omvendt"):
-            for farve in ("groen", "gul", "roed"):
-                expr = tl.get(farve, "False")
-                if _eval_threshold(_parse_threshold(expr), org_vaerdi):
-                    return farve
-            return "graa"
-
-    except (ValueError, KeyError):
+    if metode == "ingen_benchmark":
         return "graa"
+
+    if metode == "benchmark_relativ":
+        if ratio is None:
+            return "graa"
+        for farve in ("groen", "gul", "roed"):
+            if _eval_threshold(_parse_threshold(tl[farve]), ratio):
+                return farve
+        return "graa"
+
+    if metode == "benchmark_relativ_procentpoint":
+        if benchmark_vaerdi is None:
+            return "graa"
+        diff = float(org_vaerdi) - float(benchmark_vaerdi)
+        for farve in ("groen", "gul", "roed"):
+            if _eval_threshold(_parse_threshold(tl[farve]), diff):
+                return farve
+        return "graa"
+
+    if metode == "absolut_taerskel":
+        val = float(org_vaerdi)
+        for farve in ("groen", "gul", "roed"):
+            if _eval_threshold(_parse_threshold(tl[farve]), val):
+                return farve
+        return "graa"
+
+    if metode in ("binaer", "binaer_omvendt"):
+        for farve in ("groen", "gul", "roed"):
+            expr = tl.get(farve, "False")
+            if _eval_threshold(_parse_threshold(expr), org_vaerdi):
+                return farve
+        return "graa"
+
 
     return "graa"
 
@@ -225,7 +205,7 @@ def calculate(raw_indicators: list[dict], registry: dict[str, dict]) -> list[Cal
             continue
 
         defn = registry[ind_id]
-        validate_input(raw, defn)
+        warnings = validate_input(raw, defn)
 
         org_val = raw.get("org_vaerdi")
         org_aar = raw.get("org_aar")
@@ -239,12 +219,15 @@ def calculate(raw_indicators: list[dict], registry: dict[str, dict]) -> list[Cal
         ratio = None
         diff_type = defn["beregningsregel"]["difference_type"]
 
-        if isinstance(org_val, (int, float)) and isinstance(bench_val, (int, float)) and bench_val != 0:
-            ratio = org_val / bench_val
+        if type(org_val) in (int, float) and type(bench_val) in (int, float):
+            if not math.isfinite(org_val) or not math.isfinite(bench_val):
+                raise ValueError(f"{ind_id}: Måling og benchmark skal være endelige tal")
             diff_abs = org_val - bench_val
-            if diff_type == "relativ_pct":
-                diff_pct = (diff_abs / bench_val) * 100
-            elif diff_type == "procentpoint":
+            if bench_val != 0:
+                ratio = org_val / bench_val
+                if diff_type == "relativ_pct":
+                    diff_pct = (diff_abs / bench_val) * 100
+            if diff_type == "procentpoint":
                 diff_pct = diff_abs
 
         trafiklys = _evaluate_traffic_light(org_val, bench_val, ratio, defn, datastatus)
@@ -260,7 +243,8 @@ def calculate(raw_indicators: list[dict], registry: dict[str, dict]) -> list[Cal
             enhed_display=enhed_display,
             indikator_type=defn["indikator_type"],
             prompt_type=defn["prompt_type"],
-            org_vaerdi=org_val if isinstance(org_val, (int, float)) else None,
+            org_vaerdi=org_val,
+            validation_warnings=warnings,
             org_aar=org_aar,
             benchmark_vaerdi=bench_val,
             benchmark_aar=bench_aar,
@@ -279,7 +263,7 @@ def calculate(raw_indicators: list[dict], registry: dict[str, dict]) -> list[Cal
             org_vaerdi_fmt=_format_value(org_val, enhed_kode),
             benchmark_vaerdi_fmt=_format_value(bench_val, enhed_kode),
             diff_abs_fmt=_format_diff(diff_abs, diff_type, enhed_kode),
-            diff_pct_fmt=(f"{'+' if diff_pct >= 0 else ''}{diff_pct:.1f}%" if diff_pct is not None else "–"),
+            diff_pct_fmt=_format_diff(diff_pct, diff_type, enhed_kode),
         )
         results.append(calc)
 
@@ -290,7 +274,33 @@ def load_registry(registry_path: Path) -> dict[str, dict]:
     data = json.loads(Path(registry_path).read_text(encoding="utf-8"))
     registry: dict[str, dict] = {}
 
+    if not isinstance(data, list) or not data:
+        raise ValueError("Indikatorregisteret skal være en ikke-tom liste")
+    methods = {"benchmark_relativ", "benchmark_relativ_procentpoint", "absolut_taerskel",
+               "binaer", "binaer_omvendt", "ingen_benchmark"}
     for item in data:
+        if not isinstance(item, dict):
+            raise ValueError("En indikator skal være et objekt")
+        for key in ("id", "name", "dimension", "method", "source_key", "unit"):
+            if not isinstance(item.get(key), str) or not item[key].strip():
+                raise ValueError(f"Indikator mangler gyldigt felt: {key}")
+        if item["id"] in registry:
+            raise ValueError(f"Dubleret indikator-id: {item['id']}")
+        if item["dimension"] not in {"E", "S", "G"} or item["method"] not in methods:
+            raise ValueError(f"{item['id']}: Ukendt dimension eller metode")
+        if item.get("operator", "lte") not in {"lte", "gte"}:
+            raise ValueError(f"{item['id']}: Ukendt operator")
+        if item["method"].startswith("benchmark_"):
+            benchmark = item.get("benchmark")
+            if type(benchmark) not in (int, float) or not math.isfinite(benchmark):
+                raise ValueError(f"{item['id']}: Benchmark skal være et endeligt tal")
+        if item["method"] == "absolut_taerskel":
+            thresholds = item.get("thresholds", {})
+            if not isinstance(thresholds, dict) or any(
+                type(thresholds.get(k)) not in (int, float) or not math.isfinite(thresholds[k])
+                for k in ("green", "yellow")
+            ) or thresholds["green"] <= thresholds["yellow"]:
+                raise ValueError(f"{item['id']}: Ugyldige absolutte tærskler")
         method = item["method"]
         benchmark = item.get("benchmark")
         operator = item.get("operator", "lte")
@@ -323,9 +333,9 @@ def load_registry(registry_path: Path) -> dict[str, dict]:
             th = item.get("thresholds", {})
             tl = {
                 "metode": "absolut_taerskel",
-                "groen": f"value >= {th.get('green', 0)}",
-                "gul": f"value >= {th.get('yellow', 0)} and value < {th.get('green', 0)}",
-                "roed": f"value < {th.get('yellow', 0)}",
+                "groen": f"value >= {th['green']}",
+                "gul": f"value >= {th['yellow']} and value < {th['green']}",
+                "roed": f"value < {th['yellow']}",
             }
             diff_type = "ingen"
         elif method in {"binaer", "binaer_omvendt"}:
@@ -340,11 +350,14 @@ def load_registry(registry_path: Path) -> dict[str, dict]:
             tl = {"metode": "ingen_benchmark", "groen": "False", "gul": "False", "roed": "False"}
             diff_type = "ingen"
 
+        for color in ("groen", "gul", "roed"):
+            _parse_threshold(tl[color])
+
         registry[item["id"]] = {
             "id": item["id"],
             "navn": item["name"],
             "esg": item["dimension"],
-            "maalepunkt": item["topic"],
+            "maalepunkt": item.get("topic", item["name"]),
             "enhed": {"kode": _unit_code(item.get("unit", "")), "display": item.get("unit", "")},
             "indikator_type": "performance",
             "prompt_type": "kvantitativ",
@@ -377,7 +390,7 @@ def compute_scores(payload: dict[str, Any], registry: dict[str, dict]) -> list[d
     if not records:
         return []
 
-    latest_year = max(r["year"] for r in records)
+    latest_year = payload["report_year"]
     previous_year = latest_year - 1
 
     latest_rows = [r for r in records if r.get("year") == latest_year]
@@ -427,6 +440,15 @@ def compute_scores(payload: dict[str, Any], registry: dict[str, dict]) -> list[d
                 "trafficlight": calc.trafiklys,
                 "benchmark": calc.benchmark_vaerdi,
                 "latest_year": calc.org_aar,
+                "coverage_count": sum(r.get(registry[calc.id]["source_key"]) is not None for r in latest_rows),
+                "coverage_total": len(latest_rows),
+                "warnings": calc.validation_warnings,
+                "trafficlight_note": (
+                    "Måledata mangler" if current is None else
+                    "Ingen benchmarkvurdering" if calc.trafiklys_metode == "ingen_benchmark" else
+                    "Benchmark mangler eller er nul" if calc.trafiklys == "graa" and calc.trafiklys_metode == "benchmark_relativ" else
+                    "Datastatus tillader ikke vurdering" if calc.trafiklys == "graa" else ""
+                ),
             }
         )
 
@@ -446,3 +468,4 @@ def _mean_value(values: list[Any]) -> float | bool | None:
 
 def _bool_to_ja_nej(value: bool) -> str:
     return "Ja" if value else "Nej"
+

@@ -8,6 +8,14 @@
     h1 { font-size: 22px; margin-bottom: 8px; }
     h2 { font-size: 15px; margin-top: 18px; border-bottom: 1px solid #d1d5db; }
     p { white-space: pre-line; }
+    table { width:100%; border-collapse:collapse; font-size:10px; }
+    th, td { border:1px solid #ddd; padding:4px; }
+    thead { display:table-header-group; }
+    tr { page-break-inside:avoid; }
+    .light-groen { color:#166534; }
+    .light-gul { color:#854d0e; }
+    .light-roed { color:#991b1b; }
+    .light-graa { color:#475569; }
     .small { color:#4b5563; }
   </style>
 </head>
@@ -19,5 +27,7 @@
     <h2>{{ section.title }}</h2>
     <p>{{ section.body }}</p>
   {% endfor %}
+  {% include "indicator_table.html.jinja" %}
 </body>
 </html>
+

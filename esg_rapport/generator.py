@@ -35,7 +35,7 @@ def generate_report(input_path: Path, use_llm: bool, export_pdf: bool) -> tuple[
         autoescape=select_autoescape(["html", "jinja"]),
     )
 
-    template_name = "rapport_pdf.html.jinja" if export_pdf else "rapport.html.jinja"
+    template_name = "rapport.html.jinja"
     template = env.get_template(template_name)
 
     html = template.render(
@@ -53,7 +53,16 @@ def generate_report(input_path: Path, use_llm: bool, export_pdf: bool) -> tuple[
     out_pdf: Path | None = None
     if export_pdf:
         out_pdf = OUTPUT_DIR / f"{slug}_report.pdf"
-        html_to_pdf(out_html, out_pdf)
+        print_html = env.get_template("rapport_pdf.html.jinja").render(
+            organization=payload["organization"], report_year=payload["report_year"],
+            sections=sections, indicators=scores,
+        )
+        # Isolate the print source and clean it even if conversion fails.
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory(prefix="esg_pdf_") as directory:
+            print_path = Path(directory) / "report.html"
+            print_path.write_text(print_html, encoding="utf-8")
+            html_to_pdf(print_path, out_pdf)
 
     return out_html, out_pdf
 
@@ -73,3 +82,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

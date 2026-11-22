@@ -1,0 +1,20 @@
+  <h2>Indikatoroversigt</h2>
+  <table class="indicator-table">
+    <thead>
+      <tr>
+        <th>ID</th><th>Dimension</th><th>Indikator</th><th>Niveau</th><th>Udvikling %</th><th>Trafiklys</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in indicators %}
+      <tr>
+        <td>{{ i.id }}</td>
+        <td>{{ i.dimension }}</td>
+        <td>{{ i.name }}</td>
+        <td>{{ i.current if i.current is not none else 'mangler' }} {{ i.unit }}</td>
+        <td>{{ ('%.1f' % i.delta_pct) if i.delta_pct is not none else 'n/a' }}</td>
+        <td class="light-{{ i.trafficlight }}">{{ i.trafficlight }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
