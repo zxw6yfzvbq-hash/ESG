@@ -55,7 +55,7 @@ def _status_overview(indicators: list[dict[str, Any]]) -> str:
     green = sum(1 for i in indicators if i["trafficlight"] == "groen")
     return (
         f"{measured} indikatorer har måledata. Trafiklysfordeling: {green} grønne, {yellow} gule, {red} røde. "
-        "Mangler i datagrundlag vises som grå."
+        "Grå betyder, at indikatoren ikke kan vurderes; se årsagen ved indikatoren."
     )
 
 
@@ -72,12 +72,25 @@ def _indicator_paragraph(item: dict[str, Any]) -> str:
         f"Seneste niveau er {item['current']} {item['unit']}" if item["current"] is not None else "Seneste niveau mangler"
     )
     trend = f"Udvikling: {item['delta_pct']:.1f}%" if item["delta_pct"] is not None else "Udvikling kan ikke beregnes"
-    implication = "Skærpet ledelsesopmærksomhed anbefales" if item["trafficlight"] in {"roed", "gul"} else "Niveauet bør fastholdes"
+    if item["trafficlight"] == "graa":
+        implication = "Afklar datagrundlag og vurderingsgrundlag før konklusion"
+    elif item["trafficlight"] in {"roed", "gul"}:
+        implication = "Skærpet ledelsesopmærksomhed anbefales"
+    else:
+        implication = "Niveauet bør fastholdes"
+    coverage = ""
+    if item.get("coverage_total", 0):
+        coverage = f" Datadækning: {item['coverage_count']}/{item['coverage_total']} afdelingsrækker."
+    note = item.get("trafficlight_note", "")
+    if note:
+        coverage += f" Vurderingsgrundlag: {note}."
+    for warning in item.get("warnings", []):
+        coverage += f" Advarsel: {warning}."
 
     return (
         f"{item['name']}\n"
         f"1. Kort konklusion: Trafiklys er {item['trafficlight']}.\n"
-        f"2. Hvad viser data?: {observation}. {trend}.\n"
+        f"2. Hvad viser data?: {observation}. {trend}.{coverage}\n"
         f"3. Hvad betyder det?: Vurderingen er baseret på metoden {item['method']}.\n"
         f"4. Risici og potentialer: Risiko øges ved vedvarende rødt niveau; potentiale ligger i målrettede indsatser.\n"
         f"5. Ledelsesimplikation: {implication}."
@@ -86,6 +99,10 @@ def _indicator_paragraph(item: dict[str, Any]) -> str:
 
 def _overall_considerations(indicators: list[dict[str, Any]]) -> str:
     red_items = [i["name"] for i in indicators if i["trafficlight"] == "roed"]
+    if not indicators or all(i["trafficlight"] == "graa" for i in indicators):
+        return "Grundlaget tillader ikke en samlet trafiklysvurdering. Afklar data og benchmarks før ledelsesmæssige konklusioner."
+    if not red_items and any(i["trafficlight"] == "graa" for i in indicators):
+        return "Ingen vurderede indikatorer er røde. Grå indikatorer kan ikke vurderes; afklar deres datagrundlag og benchmarks."
     if not red_items:
         return "Ingen indikatorer er røde i seneste periode. Fokus bør være stabilisering af resultater og datadisciplin."
     return "Følgende indikatorer kræver særlig ledelsesopmærksomhed: " + ", ".join(red_items) + "."
@@ -129,3 +146,4 @@ def _enrich_with_llm(
         return sections
 
     return sections
+
